@@ -1,3 +1,5 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 mod app;
 mod search;
 
@@ -20,14 +22,17 @@ enum Message {
 pub fn main() -> iced::Result {
     let config = Config::load();
     let folder = config.last_folder.clone();
-    let files = folder.as_ref().map(Searcher::get_excel_files).unwrap_or_default();
+    let files = folder
+        .as_ref()
+        .map(Searcher::get_excel_files)
+        .unwrap_or_default();
     let app = Excaligrep {
         selected_folder: folder,
         files,
         ..Default::default()
     };
     iced::application(move || app.clone(), Excaligrep::update, Excaligrep::view)
-        .theme(Theme::Dark)
+        .theme(Theme::Light)
         .run()
 }
 
@@ -61,7 +66,10 @@ impl Excaligrep {
                 if let Some(path) = folder {
                     self.selected_folder = Some(path.clone());
                     self.files = Searcher::get_excel_files(&path);
-                    Config { last_folder: Some(path) }.save();
+                    Config {
+                        last_folder: Some(path),
+                    }
+                    .save();
                 }
                 Task::none()
             }
@@ -150,13 +158,8 @@ impl Excaligrep {
                 )
                 .size(12),
                 text("Files:").size(14),
-                scrollable(
-                    column(
-                        self.files.iter().map(|f| text(f).size(11).into())
-                    )
-                    .spacing(2)
-                )
-                .height(Length::Fill),
+                scrollable(column(self.files.iter().map(|f| text(f).size(11).into())).spacing(2))
+                    .height(Length::Fill),
             ]
             .spacing(15)
             .width(Length::Fixed(250.0)),
@@ -164,19 +167,12 @@ impl Excaligrep {
         .padding(15);
 
         let results = scrollable(
-            column(
-                self.search_results.iter().map(|res| {
-                    let segments = build_text_segments(&res.line, &self.search_query);
-                    container(
-                        column![
-                            text(&res.file_name).size(12),
-                            segments,
-                        ]
-                        .spacing(4),
-                    )
+            column(self.search_results.iter().map(|res| {
+                let segments = build_text_segments(&res.line, &self.search_query);
+                container(column![text(&res.file_name).size(12), segments,].spacing(4))
                     .padding(12)
                     .into()
-                }))
+            }))
             .spacing(8)
             .padding(10),
         );
@@ -192,11 +188,11 @@ fn build_text_segments<'a>(line: &'a str, query: &str) -> iced::widget::Row<'a, 
 
     let query_lower = query.to_lowercase();
     let line_lower = line.to_lowercase();
-    
+
     let mut segments = iced::widget::Row::new();
     let mut last_pos = 0;
     let highlight_color = iced::Color::from_rgb(1.0, 0.3, 0.3);
-    
+
     for (pos, _) in line_lower.match_indices(&query_lower) {
         if pos > last_pos {
             segments = segments.push(text(&line[last_pos..pos]).size(14));
@@ -204,14 +200,14 @@ fn build_text_segments<'a>(line: &'a str, query: &str) -> iced::widget::Row<'a, 
         segments = segments.push(
             text(&line[pos..pos + query.len()])
                 .size(14)
-                .color(highlight_color)
+                .color(highlight_color),
         );
         last_pos = pos + query.len();
     }
-    
+
     if last_pos < line.len() {
         segments = segments.push(text(&line[last_pos..]).size(14));
     }
-    
+
     segments
 }

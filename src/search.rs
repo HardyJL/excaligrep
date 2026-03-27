@@ -25,10 +25,15 @@ impl Searcher {
                     .lines()
                     .filter_map(|line| {
                         line.split_once(':').map(|(file_part, rest)| {
-                            let file_name = std::path::Path::new(file_part)
+                            let path = std::path::Path::new(file_part);
+                            let file_name = path
                                 .file_name()
                                 .map(|s| s.to_string_lossy().to_string())
-                                .unwrap_or_else(|| file_part.to_string());
+                                .unwrap_or_else(|| {
+                                    path.file_stem()
+                                        .map(|s| s.to_string_lossy().to_string())
+                                        .unwrap_or_else(|| file_part.to_string())
+                                });
                             SearchResult {
                                 file_name,
                                 line: rest.to_string().replace(',', " | "),
